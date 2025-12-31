@@ -7,6 +7,7 @@ import SignUpScreen from "./src/auth/SignUpScreen";
 import LoginScreen from "./src/auth/LoginScreen";
 import RoleRedirect from "./src/auth/RoleRedirect";
 import AuthLoading from "./src/auth/AuthLoading";
+import ChangePassword from "./src/auth/ChangePassword";
 
 /* Teacher Screens */
 import TeacherDashboard from "./src/teacher/TeacherDashboard";
@@ -21,6 +22,9 @@ import QuizList from "./src/student/QuizList";
 import QuizAttempt from "./src/student/QuizAttempt";
 import ResultScreen from "./src/student/ResultScreen";
 import Notifications from "./src/student/Notifications";
+import Profile from "./src/student/Profile";
+import EditProfile from "./src/student/EditProfile";
+import UploadProfilePhoto from "./src/student/UploadProfilePhoto";
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +45,7 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="RoleRedirect" component={RoleRedirect} />
+        <Stack.Screen name="ChangePassword" component={ChangePassword} />
 
         {/* TEACHER */}
         <Stack.Screen name="TeacherDashboard" component={TeacherDashboard} />
@@ -64,6 +69,9 @@ export default function App() {
         <Stack.Screen name="QuizAttempt" component={QuizAttempt} />
         <Stack.Screen name="ResultScreen" component={ResultScreen} />
         <Stack.Screen name="Notifications" component={Notifications} />
+        <Stack.Screen name="Profile" component={Profile} />
+        <Stack.Screen name="EditProfile" component={EditProfile} />
+        <Stack.Screen name="UploadProfilePhoto" component={UploadProfilePhoto} />
       </Stack.Navigator>
     </NavigationContainer>
   );
