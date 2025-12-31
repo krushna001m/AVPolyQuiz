@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "794404017890",
+    "project_id": "avpolyquiz-162f0",
+    "storage_bucket": "avpolyquiz-162f0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:794404017890:android:970f141d056fc0fe1af0bb",
+        "android_client_info": {
+          "package_name": "com.avpolyquiz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2AQDNf9xlPk-isDJm-033nLf66iv1Uo0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
