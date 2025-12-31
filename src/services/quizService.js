@@ -1,5 +1,5 @@
 import { Firebase_Realtime_DB_URL } from "@env";
-
+import axios from "axios";
 
 /* CREATE */
 export const createUser = async (uid, data) => {
@@ -21,4 +21,22 @@ export const getUser = async (uid) => {
     );
     return res.json();
 };
+
+/* GENERIC SAVE & GET */
+
+export const saveData = async (path, data) => {
+    const res = await axios.post(
+        `${Firebase_Realtime_DB_URL}/${path}.json`,
+        data
+    );
+    return res.data;
+};
+
+export const getData = async (path) => {
+    const res = await axios.get(
+        `${Firebase_Realtime_DB_URL}/${path}.json`
+    );
+    return res.data;
+};
+
 

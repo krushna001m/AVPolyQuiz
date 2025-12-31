@@ -50,14 +50,23 @@ export default function ChangePassword({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    title: { fontSize: 22, fontWeight: "bold", marginBottom: 20 },
+    container: { 
+        flex: 1, 
+        padding: 20 
+    },
+    title: { 
+        fontSize: 22, 
+        fontWeight: "bold", 
+        marginTop: 10,
+        marginBottom: 20,
+        textAlign: "center"
+    },
     input: {
         borderWidth: 1,
         borderColor: "#d1d5db",
         borderRadius: 12,
         padding: 14,
-        marginBottom: 14,
+        marginBottom: 19,
     },
     btn: {
         flexDirection: "row",
@@ -66,6 +75,11 @@ const styles = StyleSheet.create({
         backgroundColor: "#4f46e5",
         padding: 14,
         borderRadius: 12,
+        marginTop: 680,
     },
-    btnText: { color: "#fff", fontWeight: "bold", marginLeft: 8 },
+    btnText: { 
+        color: "#fff", 
+        fontWeight: "bold", 
+        marginLeft: 8 
+    },
 });

@@ -22,9 +22,9 @@ import QuizList from "./src/student/QuizList";
 import QuizAttempt from "./src/student/QuizAttempt";
 import ResultScreen from "./src/student/ResultScreen";
 import Notifications from "./src/student/Notifications";
-import Profile from "./src/student/Profile";
-import EditProfile from "./src/student/EditProfile";
-import UploadProfilePhoto from "./src/student/UploadProfilePhoto";
+import Profile from "./src/components/Profile";
+import EditProfile from "./src/components/EditProfile";
+import UploadProfilePhoto from "./src/components/UploadProfilePhoto";
 
 const Stack = createNativeStackNavigator();
 
