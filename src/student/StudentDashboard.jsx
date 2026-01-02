@@ -4,6 +4,7 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
+    SafeAreaView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
@@ -22,13 +23,18 @@ export default function StudentDashboard({ navigation }) {
         loadUser();
     }, []);
 
+    const handleLogout = async () => {
+        await AsyncStorage.removeItem("loggedInUser");
+        navigation.replace("Login");
+    };
+
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             {/* HEADER */}
             <View style={styles.headerCard}>
                 <View style={styles.headerRow}>
                     <MaterialIcons name="school" size={42} color="#ffffff" />
-                    <View style={{ marginLeft: 12 }}>
+                    <View style={{ marginLeft: 12, flex: 1 }}>
                         <Text style={styles.welcomeText}>Welcome</Text>
                         <Text style={styles.nameText}>
                             {student?.name || "Student"}
@@ -37,6 +43,14 @@ export default function StudentDashboard({ navigation }) {
                             ERP No: {student?.erpNo || "-"}
                         </Text>
                     </View>
+
+                    <TouchableOpacity onPress={handleLogout}>
+                        <MaterialIcons
+                            name="logout"
+                            size={26}
+                            color="#ffffff"
+                        />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -75,11 +89,13 @@ export default function StudentDashboard({ navigation }) {
                 />
             </View>
 
-            {/* 🔹 FOOTER */}
-            <Text style={styles.footerText}>
-                Focus • Practice • Perform
-            </Text>
-        </View>
+            {/* FOOTER */}
+            <View style={styles.footer}>
+                <Text style={styles.footerText}>
+                    Focus • Practice • Perform
+                </Text>
+            </View>
+        </SafeAreaView>
     );
 }
 
@@ -104,7 +120,6 @@ function DashboardCard({ title, icon, bg, iconColor, onPress }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
         backgroundColor: "#f9fafb",
     },
 
@@ -112,8 +127,9 @@ const styles = StyleSheet.create({
     headerCard: {
         backgroundColor: "#4f46e5",
         padding: 22,
-        borderRadius: 18,
-        marginBottom: 25,
+        borderBottomLeftRadius: 22,
+        borderBottomRightRadius: 22,
+        marginBottom: 24,
         elevation: 4,
     },
     headerRow: {
@@ -122,7 +138,7 @@ const styles = StyleSheet.create({
     },
     welcomeText: {
         color: "#e0e7ff",
-        fontSize: 16,
+        fontSize: 15,
     },
     nameText: {
         color: "#ffffff",
@@ -140,10 +156,11 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         flexWrap: "wrap",
         justifyContent: "space-between",
+        paddingHorizontal: 20,
     },
 
     card: {
-        width: "48%",              // 2 cards per row
+        width: "48%",
         borderRadius: 16,
         paddingVertical: 26,
         paddingHorizontal: 14,
@@ -160,9 +177,13 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
 
+    footer: {
+        marginTop: "auto",
+        paddingVertical: 14,
+    },
+
     footerText: {
         textAlign: "center",
-        marginTop: 420,
         color: "#6b7280",
         fontSize: 13,
     },

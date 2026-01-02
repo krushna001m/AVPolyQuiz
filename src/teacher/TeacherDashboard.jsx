@@ -4,6 +4,7 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
+    StatusBar,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
@@ -14,9 +15,13 @@ export default function TeacherDashboard({ navigation }) {
 
     useEffect(() => {
         const loadUser = async () => {
-            const data = await AsyncStorage.getItem("loggedInUser");
-            if (data) {
-                setTeacher(JSON.parse(data));
+            try {
+                const data = await AsyncStorage.getItem("loggedInUser");
+                if (data) {
+                    setTeacher(JSON.parse(data));
+                }
+            } catch (e) {
+                console.log("USER LOAD ERROR:", e);
             }
         };
         loadUser();
@@ -24,88 +29,86 @@ export default function TeacherDashboard({ navigation }) {
 
     return (
         <View style={styles.container}>
-            {/* 🔹 HEADER */}
+            <StatusBar barStyle="light-content" backgroundColor="#4f46e5" />
+
+            {/* HEADER */}
             <View style={styles.headerCard}>
                 <View style={styles.headerRow}>
-                    <MaterialIcons
-                        name="school"
-                        size={42}
-                        color="#ffffff"
-                    />
-                    <View style={{ marginLeft: 12 }}>
-                        <Text style={styles.welcomeText}>Welcome</Text>
+                    <View style={styles.avatar}>
+                        <MaterialCommunityIcons
+                            name="account-tie"
+                            size={30}
+                            color="#4f46e5"
+                        />
+                    </View>
+                    <View style={{ marginLeft: 12, flex: 1 }}>
+                        <Text style={styles.welcomeText}>Welcome back,</Text>
                         <Text style={styles.nameText}>
                             {teacher?.name || "Teacher"}
                         </Text>
-                        <Text style={styles.roleText}>
-                            Teacher Dashboard
-                        </Text>
+                        <Text style={styles.roleText}>Teacher • Quiz Manager</Text>
                     </View>
+                    <TouchableOpacity
+                        style={styles.profileBtn}
+                        onPress={() => navigation.navigate("Profile")}
+                    >
+                        <MaterialIcons name="person" size={22} color="#e0e7ff" />
+                    </TouchableOpacity>
                 </View>
+
+                <Text style={styles.headerSubText}>
+                    Create quizzes, add questions, track performance and notify students.
+                </Text>
             </View>
 
-            {/* 🔹 ACTION GRID (2 PER ROW) */}
+            {/* ACTION GRID */}
             <View style={styles.grid}>
                 <DashboardCard
                     title="Create Quiz"
-                    icon="plus-box-outline"
+                    icon="file-plus"
                     bg="#eef2ff"
                     iconColor="#4f46e5"
                     onPress={() => navigation.navigate("CreateQuiz")}
                 />
-
+                <DashboardCard
+                    title="Add Questions"
+                    icon="format-list-bulleted"
+                    bg="#ecfdf3"
+                    iconColor="#16a34a"
+                    onPress={() => navigation.navigate("CreateQuiz")}
+                />
                 <DashboardCard
                     title="Performance"
                     icon="chart-line"
-                    bg="#ecfeff"
-                    iconColor="#0891b2"
-                    onPress={() =>
-                        navigation.navigate("PerformanceDashboard")
-                    }
+                    bg="#fef3c7"
+                    iconColor="#d97706"
+                    onPress={() => navigation.navigate("PerformanceDashboard")}
                 />
-
                 <DashboardCard
-                    title="Send Notification"
-                    icon="bell-outline"
-                    bg="#fff7ed"
-                    iconColor="#ea580c"
-                    onPress={() =>
-                        navigation.navigate("SendNotification")
-                    }
-                />
-
-                <DashboardCard
-                    title="My Profile"
-                    icon="account-circle-outline"
-                    bg="#f0fdf4"
-                    iconColor="#16a34a"
-                    onPress={() =>
-                        navigation.navigate("Profile")
-                    }
+                    title="Notify Students"
+                    icon="bell-ring"
+                    bg="#fee2e2"
+                    iconColor="#dc2626"
+                    onPress={() => navigation.navigate("SendNotification")}
                 />
             </View>
 
-            {/* 🔹 FOOTER */}
+            {/* FOOTER */}
             <Text style={styles.footerText}>
-                Create • Manage • Analyze
+                Create • Manage • Analyze your class quizzes at one place.
             </Text>
         </View>
     );
 }
 
-/* 🔹 DASHBOARD CARD */
 function DashboardCard({ title, icon, bg, iconColor, onPress }) {
     return (
         <TouchableOpacity
-            style={[styles.card, { backgroundColor: bg }]}
             onPress={onPress}
             activeOpacity={0.8}
+            style={[styles.card, { backgroundColor: bg }]}
         >
-            <MaterialCommunityIcons
-                name={icon}
-                size={34}
-                color={iconColor}
-            />
+            <MaterialCommunityIcons name={icon} size={30} color={iconColor} />
             <Text style={styles.cardText}>{title}</Text>
         </TouchableOpacity>
     );
@@ -117,8 +120,6 @@ const styles = StyleSheet.create({
         padding: 20,
         backgroundColor: "#f9fafb",
     },
-
-    /* Header */
     headerCard: {
         backgroundColor: "#4f46e5",
         padding: 22,
@@ -130,9 +131,23 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
     },
+    avatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: "#e0e7ff",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    profileBtn: {
+        padding: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "#818cf8",
+    },
     welcomeText: {
         color: "#e0e7ff",
-        fontSize: 16,
+        fontSize: 14,
     },
     nameText: {
         color: "#ffffff",
@@ -141,11 +156,15 @@ const styles = StyleSheet.create({
     },
     roleText: {
         color: "#c7d2fe",
-        fontSize: 14,
+        fontSize: 13,
         marginTop: 2,
     },
-
-    /* Grid */
+    headerSubText: {
+        marginTop: 14,
+        color: "#e5e7eb",
+        fontSize: 13,
+        lineHeight: 18,
+    },
     grid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -167,11 +186,10 @@ const styles = StyleSheet.create({
         color: "#111827",
         textAlign: "center",
     },
-
     footerText: {
         textAlign: "center",
-        marginTop: 420,
+        marginTop: 12,
         color: "#6b7280",
-        fontSize: 13,
+        fontSize: 12,
     },
 });

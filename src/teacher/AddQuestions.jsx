@@ -5,13 +5,19 @@ import {
     Alert,
     StyleSheet,
     TouchableOpacity,
+    ScrollView,
+    TextInput,
 } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { launchImageLibrary } from "react-native-image-picker";
 import RNFS from "react-native-fs";
+import axios from "axios";
 
-import Input from "../components/Input";
-import { saveData } from "../services/quizService";
+// ✅ IMPORT AUTH (SAME AS CREATE QUIZ)
+import { auth } from "../firebase/firebaseConfig";
+
+const Firebase_Realtime_DB_URL =
+    "https://avpolyquiz-162f0-default-rtdb.firebaseio.com";
 
 export default function AddQuestions({ route }) {
     const { quizId } = route.params;
@@ -20,32 +26,69 @@ export default function AddQuestions({ route }) {
     const [options, setOptions] = useState(["", "", "", ""]);
     const [correctIndex, setCorrectIndex] = useState("");
 
-    /* 🔹 SAVE SINGLE QUESTION */
+    /* ================= SAVE QUESTION ================= */
+    const saveQuestionData = async (questionData) => {
+        const user = auth.currentUser;
+
+        if (!user) {
+            throw new Error("User not logged in");
+        }
+
+        const token = await user.getIdToken();
+        const id = Date.now();
+
+        await axios.put(
+            `${Firebase_Realtime_DB_URL}/questions/${quizId}/${id}.json`,
+            {
+                ...questionData,
+                quizId,
+                createdBy: user.uid,
+                createdAt: Date.now(),
+            },
+            {
+                params: {
+                    auth: token, // 🔐 SAME AS CREATE QUIZ
+                },
+            }
+        );
+    };
+
+    /* ================= MANUAL SAVE ================= */
     const handleSaveQuestion = async () => {
-        if (!question || options.some(o => !o) || correctIndex === "") {
+        if (!question.trim() || options.some(o => !o.trim()) || correctIndex === "") {
             Alert.alert("Error", "Fill all fields");
             return;
         }
 
-        await saveData(`questions/${quizId}`, {
-            question,
-            options,
-            correctIndex: Number(correctIndex),
-        });
+        const idx = Number(correctIndex);
+        if (isNaN(idx) || idx < 0 || idx > 3) {
+            Alert.alert("Error", "Correct option index must be between 0 and 3");
+            return;
+        }
 
-        Alert.alert("Success", "Question added");
-        setQuestion("");
-        setOptions(["", "", "", ""]);
-        setCorrectIndex("");
-    };
-
-    /* 🔹 UPLOAD JSON FILE (RN 0.83 SAFE) */
-    const handleUploadJSON = async () => {
         try {
-            const res = await launchImageLibrary({
-                mediaType: "mixed",
+            await saveQuestionData({
+                question: question.trim(),
+                options,
+                correctIndex: idx,
             });
 
+            Alert.alert("Success", "Question added");
+
+            setQuestion("");
+            setOptions(["", "", "", ""]);
+            setCorrectIndex("");
+
+        } catch (error) {
+            console.log("SAVE QUESTION ERROR:", error);
+            Alert.alert("Error", error.message || "Failed to save question");
+        }
+    };
+
+    /* ================= JSON UPLOAD ================= */
+    const handleUploadJSON = async () => {
+        try {
+            const res = await launchImageLibrary({ mediaType: "mixed" });
             if (res.didCancel || !res.assets?.length) return;
 
             const file = res.assets[0];
@@ -55,15 +98,13 @@ export default function AddQuestions({ route }) {
                 return;
             }
 
-            const fileContent = await RNFS.readFile(file.uri, "utf8");
-            const questions = JSON.parse(fileContent);
+            const content = await RNFS.readFile(file.uri, "utf8");
+            const questions = JSON.parse(content);
 
             if (!Array.isArray(questions)) {
-                Alert.alert("Invalid JSON", "JSON must be an array of questions");
+                Alert.alert("Invalid JSON", "JSON must be an array");
                 return;
             }
-
-            let count = 0;
 
             for (let q of questions) {
                 if (
@@ -73,47 +114,48 @@ export default function AddQuestions({ route }) {
                     typeof q.correctIndex !== "number"
                 ) {
                     Alert.alert(
-                        "Invalid MCQ Format",
-                        "Each question must have question, 4 options, correctIndex"
+                        "Invalid Format",
+                        "Each question must have question, 4 options & correctIndex"
                     );
                     return;
                 }
-
-                await saveData(`questions/${quizId}`, q);
-                count++;
             }
 
-            Alert.alert(
-                "Success",
-                `${count} questions uploaded successfully`
-            );
+            for (let q of questions) {
+                await saveQuestionData(q);
+            }
+
+            Alert.alert("Success", "Questions uploaded successfully");
 
         } catch (error) {
             console.log("JSON UPLOAD ERROR:", error);
-            Alert.alert("Error", "Failed to upload JSON file");
+            Alert.alert("Error", error.message || "Failed to upload JSON");
         }
     };
 
     return (
-        <View style={styles.container}>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
             <Text style={styles.title}>Add Questions</Text>
 
-            {/* 🔹 MANUAL ENTRY */}
+            {/* MANUAL ENTRY */}
             <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Manual Entry</Text>
 
                 <Input
-                    placeholder="Question"
+                    label="Question"
+                    placeholder="Type your question"
                     value={question}
                     onChangeText={setQuestion}
+                    multiline
                 />
 
                 {options.map((opt, index) => (
                     <Input
                         key={index}
+                        label={`Option ${index + 1}`}
                         placeholder={`Option ${index + 1}`}
                         value={opt}
-                        onChangeText={(text) => {
+                        onChangeText={text => {
                             const updated = [...options];
                             updated[index] = text;
                             setOptions(updated);
@@ -122,61 +164,58 @@ export default function AddQuestions({ route }) {
                 ))}
 
                 <Input
-                    placeholder="Correct Option Index (0–3)"
+                    label="Correct option index"
+                    placeholder="0, 1, 2 or 3"
                     keyboardType="numeric"
                     value={correctIndex}
                     onChangeText={setCorrectIndex}
                 />
 
-                <TouchableOpacity
-                    style={styles.primaryBtn}
-                    onPress={handleSaveQuestion}
-                >
-                    <MaterialIcons name="save" size={22} color="#fff" />
+                <TouchableOpacity style={styles.primaryBtn} onPress={handleSaveQuestion}>
+                    <MaterialIcons name="save" size={20} color="#fff" />
                     <Text style={styles.btnText}>Save Question</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* 🔹 AUTO UPLOAD */}
+            {/* AUTO UPLOAD */}
             <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Auto Upload MCQs</Text>
 
-                <TouchableOpacity
-                    style={styles.uploadBtn}
-                    onPress={handleUploadJSON}
-                >
-                    <MaterialIcons
-                        name="upload-file"
-                        size={22}
-                        color="#4f46e5"
-                    />
+                <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadJSON}>
+                    <MaterialIcons name="cloud-upload" size={20} color="#4f46e5" />
                     <Text style={styles.uploadText}>Upload JSON File</Text>
                 </TouchableOpacity>
+            </View>
+        </ScrollView>
+    );
+}
 
-                <Text style={styles.helpText}>
-                    JSON format:
-                    {"\n"}[
-                    {"\n"}  {"{"}
-                    {"\n"}    "question": "2+2?",
-                    {"\n"}    "options": ["1","2","3","4"],
-                    {"\n"}    "correctIndex": 3
-                    {"\n"}  {"}"}
-                    {"\n"}]
-                </Text>
+/* ================= INPUT COMPONENT ================= */
+function Input({ label, ...props }) {
+    return (
+        <View style={{ marginBottom: 12 }}>
+            {label && <Text style={styles.label}>{label}</Text>}
+            <View style={styles.inputWrapper}>
+                <TextInput
+                    style={styles.input}
+                    placeholderTextColor="#9ca3af"
+                    {...props}
+                />
             </View>
         </View>
     );
 }
 
+/* ================= STYLES ================= */
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 20, backgroundColor: "#f9fafb" },
-
     title: {
         fontSize: 22,
         fontWeight: "bold",
         marginBottom: 15,
+        textAlign: "center",
+        color: "#111827",
     },
-
     card: {
         backgroundColor: "#fff",
         borderRadius: 16,
@@ -184,49 +223,55 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         elevation: 3,
     },
-
     sectionTitle: {
         fontSize: 16,
         fontWeight: "bold",
         marginBottom: 10,
+        color: "#111827",
     },
-
+    label: {
+        fontSize: 13,
+        color: "#374151",
+        marginBottom: 4,
+    },
+    inputWrapper: {
+        borderWidth: 1,
+        borderColor: "#d1d5db",
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: "#f9fafb",
+    },
+    input: {
+        fontSize: 14,
+        color: "#111827",
+    },
     primaryBtn: {
         flexDirection: "row",
-        alignItems: "center",
         justifyContent: "center",
+        alignItems: "center",
         backgroundColor: "#4f46e5",
         paddingVertical: 14,
         borderRadius: 12,
         marginTop: 10,
     },
-
     btnText: {
         color: "#fff",
         fontWeight: "bold",
         marginLeft: 8,
     },
-
     uploadBtn: {
         flexDirection: "row",
-        alignItems: "center",
         justifyContent: "center",
+        alignItems: "center",
         borderWidth: 1,
         borderColor: "#4f46e5",
         paddingVertical: 14,
         borderRadius: 12,
     },
-
     uploadText: {
         color: "#4f46e5",
         fontWeight: "bold",
         marginLeft: 8,
-    },
-
-    helpText: {
-        fontSize: 12,
-        color: "#6b7280",
-        marginTop: 10,
-        textAlign: "center",
     },
 });
