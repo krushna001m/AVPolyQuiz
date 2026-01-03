@@ -1,5 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+    initializeAuth,
+    getReactNativePersistence,
+} from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -8,10 +12,15 @@ const firebaseConfig = {
     projectId: "avpolyquiz-162f0",
     storageBucket: "avpolyquiz-162f0.firebasestorage.app",
     messagingSenderId: "794404017890",
-    appId: "1:794404017890:android:970f141d056fc0fe1af0bb"
+    appId: "1:794404017890:android:970f141d056fc0fe1af0bb",
 };
 
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+/* ✅ CORRECT AUTH FOR REACT NATIVE */
+export const auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+});
+
+/* Firestore (unchanged) */
 export const db = getFirestore(app);

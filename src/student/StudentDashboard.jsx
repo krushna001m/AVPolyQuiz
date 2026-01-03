@@ -4,7 +4,7 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    SafeAreaView,
+    StatusBar,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
@@ -15,43 +15,58 @@ export default function StudentDashboard({ navigation }) {
 
     useEffect(() => {
         const loadUser = async () => {
-            const data = await AsyncStorage.getItem("loggedInUser");
-            if (data) {
-                setStudent(JSON.parse(data));
+            try {
+                const data = await AsyncStorage.getItem("loggedInUser");
+                if (data) {
+                    setStudent(JSON.parse(data));
+                }
+            } catch (e) {
+                console.log("USER LOAD ERROR:", e);
             }
         };
         loadUser();
     }, []);
 
-    const handleLogout = async () => {
-        await AsyncStorage.removeItem("loggedInUser");
-        navigation.replace("Login");
-    };
-
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
+            <StatusBar barStyle="light-content" backgroundColor="#4f46e5" />
+
             {/* HEADER */}
             <View style={styles.headerCard}>
                 <View style={styles.headerRow}>
-                    <MaterialIcons name="school" size={42} color="#ffffff" />
+                    <View style={styles.avatar}>
+                        <MaterialIcons
+                            name="school"
+                            size={28}
+                            color="#4f46e5"
+                        />
+                    </View>
+
                     <View style={{ marginLeft: 12, flex: 1 }}>
-                        <Text style={styles.welcomeText}>Welcome</Text>
+                        <Text style={styles.welcomeText}>Welcome back,</Text>
                         <Text style={styles.nameText}>
                             {student?.name || "Student"}
                         </Text>
-                        <Text style={styles.erpText}>
-                            ERP No: {student?.erpNo || "-"}
+                        <Text style={styles.roleText}>
+                            Student • Quiz Participant
                         </Text>
                     </View>
 
-                    <TouchableOpacity onPress={handleLogout}>
+                    <TouchableOpacity
+                        style={styles.profileBtn}
+                        onPress={() => navigation.navigate("Profile")}
+                    >
                         <MaterialIcons
-                            name="logout"
-                            size={26}
-                            color="#ffffff"
+                            name="person"
+                            size={22}
+                            color="#e0e7ff"
                         />
                     </TouchableOpacity>
                 </View>
+
+                <Text style={styles.headerSubText}>
+                    Attempt quizzes, track your performance and stay updated with notifications.
+                </Text>
             </View>
 
             {/* ACTION GRID */}
@@ -67,35 +82,33 @@ export default function StudentDashboard({ navigation }) {
                 <DashboardCard
                     title="My Results"
                     icon="chart-bar"
-                    bg="#ecfeff"
-                    iconColor="#0891b2"
+                    bg="#ecfdf3"
+                    iconColor="#16a34a"
                     onPress={() => navigation.navigate("ResultScreen")}
                 />
 
                 <DashboardCard
                     title="Notifications"
                     icon="bell-outline"
-                    bg="#fff7ed"
-                    iconColor="#ea580c"
+                    bg="#fef3c7"
+                    iconColor="#d97706"
                     onPress={() => navigation.navigate("Notifications")}
                 />
 
                 <DashboardCard
                     title="My Profile"
                     icon="account-circle-outline"
-                    bg="#f0fdf4"
-                    iconColor="#16a34a"
+                    bg="#fee2e2"
+                    iconColor="#dc2626"
                     onPress={() => navigation.navigate("Profile")}
                 />
             </View>
 
             {/* FOOTER */}
-            <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                    Focus • Practice • Perform
-                </Text>
-            </View>
-        </SafeAreaView>
+            <Text style={styles.footerText}>
+                Learn • Practice • Perform better every day.
+            </Text>
+        </View>
     );
 }
 
@@ -103,15 +116,11 @@ export default function StudentDashboard({ navigation }) {
 function DashboardCard({ title, icon, bg, iconColor, onPress }) {
     return (
         <TouchableOpacity
-            style={[styles.card, { backgroundColor: bg }]}
             onPress={onPress}
             activeOpacity={0.8}
+            style={[styles.card, { backgroundColor: bg }]}
         >
-            <MaterialCommunityIcons
-                name={icon}
-                size={34}
-                color={iconColor}
-            />
+            <MaterialCommunityIcons name={icon} size={30} color={iconColor} />
             <Text style={styles.cardText}>{title}</Text>
         </TouchableOpacity>
     );
@@ -120,6 +129,7 @@ function DashboardCard({ title, icon, bg, iconColor, onPress }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        padding: 20,
         backgroundColor: "#f9fafb",
     },
 
@@ -127,28 +137,47 @@ const styles = StyleSheet.create({
     headerCard: {
         backgroundColor: "#4f46e5",
         padding: 22,
-        borderBottomLeftRadius: 22,
-        borderBottomRightRadius: 22,
-        marginBottom: 24,
+        borderRadius: 18,
+        marginBottom: 25,
         elevation: 4,
     },
     headerRow: {
         flexDirection: "row",
         alignItems: "center",
     },
+    avatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: "#e0e7ff",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    profileBtn: {
+        padding: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "#818cf8",
+    },
     welcomeText: {
         color: "#e0e7ff",
-        fontSize: 15,
+        fontSize: 14,
     },
     nameText: {
         color: "#ffffff",
         fontSize: 22,
         fontWeight: "bold",
     },
-    erpText: {
+    roleText: {
         color: "#c7d2fe",
-        fontSize: 14,
+        fontSize: 13,
         marginTop: 2,
+    },
+    headerSubText: {
+        marginTop: 14,
+        color: "#e5e7eb",
+        fontSize: 13,
+        lineHeight: 18,
     },
 
     /* Grid */
@@ -156,9 +185,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         flexWrap: "wrap",
         justifyContent: "space-between",
-        paddingHorizontal: 20,
     },
-
     card: {
         width: "48%",
         borderRadius: 16,
@@ -168,7 +195,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         elevation: 2,
     },
-
     cardText: {
         marginTop: 10,
         fontSize: 14,
@@ -177,14 +203,10 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
 
-    footer: {
-        marginTop: "auto",
-        paddingVertical: 14,
-    },
-
     footerText: {
         textAlign: "center",
+        marginTop: 12,
         color: "#6b7280",
-        fontSize: 13,
+        fontSize: 12,
     },
 });
