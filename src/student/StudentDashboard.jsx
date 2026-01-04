@@ -80,11 +80,11 @@ export default function StudentDashboard({ navigation }) {
                 />
 
                 <DashboardCard
-                    title="My Results"
+                    title="My Performance"
                     icon="chart-bar"
                     bg="#ecfdf3"
                     iconColor="#16a34a"
-                    onPress={() => navigation.navigate("ResultScreen")}
+                    onPress={() => navigation.navigate("StudentPerformance")}
                 />
 
                 <DashboardCard

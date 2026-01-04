@@ -12,8 +12,6 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { launchImageLibrary } from "react-native-image-picker";
 import RNFS from "react-native-fs";
 import axios from "axios";
-
-// ✅ IMPORT AUTH (SAME AS CREATE QUIZ)
 import { auth } from "../firebase/firebaseConfig";
 
 const Firebase_Realtime_DB_URL =
@@ -29,10 +27,7 @@ export default function AddQuestions({ route }) {
     /* ================= SAVE QUESTION ================= */
     const saveQuestionData = async (questionData) => {
         const user = auth.currentUser;
-
-        if (!user) {
-            throw new Error("User not logged in");
-        }
+        if (!user) throw new Error("User not logged in");
 
         const token = await user.getIdToken();
         const id = Date.now();
@@ -45,24 +40,20 @@ export default function AddQuestions({ route }) {
                 createdBy: user.uid,
                 createdAt: Date.now(),
             },
-            {
-                params: {
-                    auth: token, // 🔐 SAME AS CREATE QUIZ
-                },
-            }
+            { params: { auth: token } }
         );
     };
 
     /* ================= MANUAL SAVE ================= */
     const handleSaveQuestion = async () => {
-        if (!question.trim() || options.some(o => !o.trim()) || correctIndex === "") {
+        if (!question.trim() || options.some(o => !o.trim()) || !correctIndex) {
             Alert.alert("Error", "Fill all fields");
             return;
         }
 
         const idx = Number(correctIndex);
-        if (isNaN(idx) || idx < 0 || idx > 3) {
-            Alert.alert("Error", "Correct option index must be between 0 and 3");
+        if (isNaN(idx) || idx < 1 || idx > 4) {
+            Alert.alert("Error", "Correct option index must be between 1 and 4");
             return;
         }
 
@@ -70,7 +61,7 @@ export default function AddQuestions({ route }) {
             await saveQuestionData({
                 question: question.trim(),
                 options,
-                correctIndex: idx,
+                correctIndex: idx - 1, // ✅ CONVERT TO 0-BASED
             });
 
             Alert.alert("Success", "Question added");
@@ -78,10 +69,9 @@ export default function AddQuestions({ route }) {
             setQuestion("");
             setOptions(["", "", "", ""]);
             setCorrectIndex("");
-
-        } catch (error) {
-            console.log("SAVE QUESTION ERROR:", error);
-            Alert.alert("Error", error.message || "Failed to save question");
+        } catch (e) {
+            console.log("SAVE QUESTION ERROR:", e);
+            Alert.alert("Error", "Failed to save question");
         }
     };
 
@@ -94,7 +84,7 @@ export default function AddQuestions({ route }) {
             const file = res.assets[0];
 
             if (!file.fileName?.endsWith(".json")) {
-                Alert.alert("Invalid File", "Please upload a .json file");
+                Alert.alert("Invalid File", "Upload a .json file");
                 return;
             }
 
@@ -111,30 +101,35 @@ export default function AddQuestions({ route }) {
                     !q.question ||
                     !Array.isArray(q.options) ||
                     q.options.length !== 4 ||
-                    typeof q.correctIndex !== "number"
+                    typeof q.correctIndex !== "number" ||
+                    q.correctIndex < 1 ||
+                    q.correctIndex > 4
                 ) {
                     Alert.alert(
                         "Invalid Format",
-                        "Each question must have question, 4 options & correctIndex"
+                        "Each question must have 4 options & correctIndex (1–4)"
                     );
                     return;
                 }
             }
 
             for (let q of questions) {
-                await saveQuestionData(q);
+                await saveQuestionData({
+                    question: q.question,
+                    options: q.options,
+                    correctIndex: q.correctIndex - 1, // ✅ FIX
+                });
             }
 
             Alert.alert("Success", "Questions uploaded successfully");
-
-        } catch (error) {
-            console.log("JSON UPLOAD ERROR:", error);
-            Alert.alert("Error", error.message || "Failed to upload JSON");
+        } catch (e) {
+            console.log("JSON UPLOAD ERROR:", e);
+            Alert.alert("Error", "Failed to upload JSON");
         }
     };
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
             <Text style={styles.title}>Add Questions</Text>
 
             {/* MANUAL ENTRY */}
@@ -155,7 +150,7 @@ export default function AddQuestions({ route }) {
                         label={`Option ${index + 1}`}
                         placeholder={`Option ${index + 1}`}
                         value={opt}
-                        onChangeText={text => {
+                        onChangeText={(text) => {
                             const updated = [...options];
                             updated[index] = text;
                             setOptions(updated);
@@ -164,8 +159,8 @@ export default function AddQuestions({ route }) {
                 ))}
 
                 <Input
-                    label="Correct option index"
-                    placeholder="0, 1, 2 or 3"
+                    label="Correct option index (1–4)"
+                    placeholder="1, 2, 3 or 4"
                     keyboardType="numeric"
                     value={correctIndex}
                     onChangeText={setCorrectIndex}
@@ -177,7 +172,7 @@ export default function AddQuestions({ route }) {
                 </TouchableOpacity>
             </View>
 
-            {/* AUTO UPLOAD */}
+            {/* JSON UPLOAD */}
             <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Auto Upload MCQs</Text>
 
@@ -190,7 +185,7 @@ export default function AddQuestions({ route }) {
     );
 }
 
-/* ================= INPUT COMPONENT ================= */
+/* ================= INPUT ================= */
 function Input({ label, ...props }) {
     return (
         <View style={{ marginBottom: 12 }}>

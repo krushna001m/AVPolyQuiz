@@ -71,11 +71,11 @@ export default function TeacherDashboard({ navigation }) {
                     onPress={() => navigation.navigate("CreateQuiz")}
                 />
                 <DashboardCard
-                    title="Add Questions"
+                    title="Manage Quizzes"
                     icon="format-list-bulleted"
                     bg="#ecfdf3"
                     iconColor="#16a34a"
-                    onPress={() => navigation.navigate("CreateQuiz")}
+                    onPress={() => navigation.navigate("ManageQuiz")}
                 />
                 <DashboardCard
                     title="Performance"

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
     View,
     Text,
@@ -8,22 +8,47 @@ import {
     Alert,
 } from "react-native";
 import axios from "axios";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { auth } from "../firebase/firebaseConfig";
 
 const Firebase_Realtime_DB_URL =
     "https://avpolyquiz-162f0-default-rtdb.firebaseio.com";
 
 export default function QuizAttempt({ route, navigation }) {
-    const { quizId, quizTitle } = route.params;
+    const { quizId, quizTitle, timeLimit = 10 } = route.params;
 
     const [questions, setQuestions] = useState([]);
     const [current, setCurrent] = useState(0);
     const [score, setScore] = useState(0);
     const [loading, setLoading] = useState(true);
 
+    const [answers, setAnswers] = useState([]);
+    const [selectedIndex, setSelectedIndex] = useState(null);
+    const [locked, setLocked] = useState(false);
+
+    /* ================= TIMER ================= */
+    const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
+    const timerRef = useRef(null);
+
     /* ================= FETCH QUESTIONS ================= */
     useEffect(() => {
         loadQuestions();
+    }, []);
+
+    /* ================= START TIMER ================= */
+    useEffect(() => {
+        timerRef.current = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current);
+                    autoSubmit();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timerRef.current);
     }, []);
 
     const loadQuestions = async () => {
@@ -34,19 +59,14 @@ export default function QuizAttempt({ route, navigation }) {
                 return;
             }
 
-            const token = await user.getIdToken();
+            const token = await user.getIdToken(true);
 
             const res = await axios.get(
                 `${Firebase_Realtime_DB_URL}/questions/${quizId}.json`,
                 { params: { auth: token } }
             );
 
-            if (res.data) {
-                const list = Object.values(res.data);
-                setQuestions(list);
-            } else {
-                setQuestions([]);
-            }
+            setQuestions(res.data ? Object.values(res.data) : []);
         } catch (e) {
             console.log("FETCH QUESTIONS ERROR:", e);
             Alert.alert("Error", "Failed to load questions");
@@ -56,118 +76,209 @@ export default function QuizAttempt({ route, navigation }) {
     };
 
     /* ================= HANDLE ANSWER ================= */
-    const handleAnswer = async (index) => {
-        const isCorrect = index === questions[current].correctIndex;
+    const handleAnswer = (index) => {
+        if (locked || timeLeft <= 0) return;
+
+        const q = questions[current];
+        setSelectedIndex(index);
+        setLocked(true);
+
+        const isCorrect = index === q.correctIndex;
         const updatedScore = isCorrect ? score + 1 : score;
 
-        if (current + 1 < questions.length) {
-            setScore(updatedScore);
-            setCurrent(current + 1);
-        } else {
-            await submitResult(updatedScore);
-        }
+        const answerObj = {
+            question: q.question,
+            options: q.options,
+            correctIndex: q.correctIndex,
+            selectedIndex: index,
+            isCorrect,
+        };
+
+        setAnswers((prev) => [...prev, answerObj]);
+
+        setTimeout(() => {
+            if (current + 1 < questions.length) {
+                setScore(updatedScore);
+                setCurrent(current + 1);
+                setSelectedIndex(null);
+                setLocked(false);
+            } else {
+                submitResult(updatedScore, [...answers, answerObj]);
+            }
+        }, 600);
+    };
+
+    /* ================= AUTO SUBMIT ================= */
+    const autoSubmit = async () => {
+        setLocked(true);
+
+        const unanswered = questions.length - answers.length;
+
+        await submitResult(score, [
+            ...answers,
+            ...Array(unanswered).fill({
+                skipped: true,
+                isCorrect: false,
+            }),
+        ]);
     };
 
     /* ================= SAVE RESULT ================= */
-    const submitResult = async (finalScore) => {
+    const submitResult = async (finalScore, finalAnswers) => {
         try {
             const user = auth.currentUser;
             if (!user) return;
 
-            const token = await user.getIdToken();
+            const token = await user.getIdToken(true);
 
             await axios.put(
-                `${Firebase_Realtime_DB_URL}/results/${quizId}/${user.uid}.json`,
+                `${Firebase_Realtime_DB_URL}/results/${quizId}/${user.uid}.json?auth=${token}`,
                 {
                     quizId,
                     score: finalScore,
                     total: questions.length,
+                    answers: finalAnswers,
                     submittedAt: Date.now(),
-                },
-                { params: { auth: token } }
+                }
             );
 
             navigation.replace("ResultScreen", {
                 score: finalScore,
                 total: questions.length,
+                answers: finalAnswers,
+                quizId,
+                quizTitle,
             });
         } catch (e) {
-            console.log("SAVE RESULT ERROR:", e);
             Alert.alert("Error", "Failed to submit quiz");
         }
+    };
+
+    /* ================= HELPERS ================= */
+    const formatTime = () => {
+        const m = Math.floor(timeLeft / 60);
+        const s = timeLeft % 60;
+        return `${m}:${s < 10 ? "0" : ""}${s}`;
     };
 
     /* ================= LOADING ================= */
     if (loading) {
         return (
             <View style={styles.center}>
-                <ActivityIndicator size="large" />
+                <ActivityIndicator size="large" color="#4f46e5" />
                 <Text>Loading Questions...</Text>
             </View>
         );
     }
 
-    if (!questions.length) {
-        return (
-            <View style={styles.center}>
-                <Text>No questions available</Text>
-            </View>
-        );
-    }
-
     const q = questions[current];
+    const danger = timeLeft <= 30;
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>{quizTitle}</Text>
+            {/* HEADER */}
+            <View style={styles.header}>
+                <Text style={styles.title}>{quizTitle}</Text>
 
+                <View
+                    style={[
+                        styles.timerBox,
+                        { backgroundColor: danger ? "#fee2e2" : "#eef2ff" },
+                    ]}
+                >
+                    <MaterialIcons
+                        name="timer"
+                        size={18}
+                        color={danger ? "#dc2626" : "#4f46e5"}
+                    />
+                    <Text
+                        style={[
+                            styles.timerText,
+                            { color: danger ? "#dc2626" : "#4f46e5" },
+                        ]}
+                    >
+                        {formatTime()}
+                    </Text>
+                </View>
+            </View>
+
+            {/* QUESTION */}
             <Text style={styles.question}>
                 Q{current + 1}. {q.question}
             </Text>
 
-            {q.options.map((opt, i) => (
-                <TouchableOpacity
-                    key={i}
-                    style={styles.option}
-                    onPress={() => handleAnswer(i)}
-                >
-                    <Text style={styles.optionText}>{opt}</Text>
-                </TouchableOpacity>
-            ))}
+            {/* OPTIONS */}
+            {q.options.map((opt, i) => {
+                const isSelected = selectedIndex === i;
+                const isCorrect = i === q.correctIndex;
 
-            <Text style={styles.progress}>
-                Question {current + 1} / {questions.length}
-            </Text>
+                let bg = "#e5e7eb";
+                if (locked && isSelected) {
+                    bg = isCorrect ? "#bbf7d0" : "#fecaca";
+                }
+
+                return (
+                    <TouchableOpacity
+                        key={i}
+                        style={[styles.option, { backgroundColor: bg }]}
+                        onPress={() => handleAnswer(i)}
+                        disabled={locked}
+                    >
+                        <Text style={styles.optionText}>{opt}</Text>
+                    </TouchableOpacity>
+                );
+            })}
         </View>
     );
 }
 
 /* ================= STYLES ================= */
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-    title: {
-        fontSize: 20,
-        fontWeight: "bold",
+    container: {
+        flex: 1,
+        padding: 20,
+        backgroundColor: "#f9fafb",
+    },
+    center: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
         marginBottom: 12,
-        textAlign: "center",
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: "#111827",
+        flex: 1,
+    },
+    timerBox: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 12,
+    },
+    timerText: {
+        marginLeft: 6,
+        fontWeight: "bold",
     },
     question: {
         fontSize: 18,
         fontWeight: "bold",
-        marginBottom: 20,
+        marginVertical: 20,
     },
     option: {
-        padding: 15,
-        backgroundColor: "#e5e7eb",
-        borderRadius: 10,
+        padding: 16,
+        borderRadius: 14,
         marginBottom: 12,
     },
-    optionText: { fontSize: 16 },
-    progress: {
-        textAlign: "center",
-        marginTop: 20,
-        color: "#6b7280",
+    optionText: {
+        fontSize: 16,
+        color: "#111827",
     },
 });

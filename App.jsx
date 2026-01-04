@@ -15,12 +15,15 @@ import CreateQuiz from "./src/teacher/CreateQuiz";
 import AddQuestions from "./src/teacher/AddQuestions";
 import PerformanceDashboard from "./src/teacher/PerformanceDashboard";
 import SendNotification from "./src/teacher/SendNotification";
+import ManageQuiz from "./src/teacher/ManageQuiz";
 
 /* Student Screens */
 import StudentDashboard from "./src/student/StudentDashboard";
 import QuizList from "./src/student/QuizList";
 import QuizAttempt from "./src/student/QuizAttempt";
 import ResultScreen from "./src/student/ResultScreen";
+import StudentPerformance from "./src/student/StudentPerformance";
+import AnswerReview from "./src/student/AnswerReview";
 import Notifications from "./src/student/Notifications";
 import Profile from "./src/components/Profile";
 import EditProfile from "./src/components/EditProfile";
@@ -59,6 +62,7 @@ export default function App() {
           name="SendNotification"
           component={SendNotification}
         />
+        <Stack.Screen name="ManageQuiz" component={ManageQuiz} />
 
         {/* STUDENT */}
         <Stack.Screen
@@ -68,6 +72,8 @@ export default function App() {
         <Stack.Screen name="QuizList" component={QuizList} />
         <Stack.Screen name="QuizAttempt" component={QuizAttempt} />
         <Stack.Screen name="ResultScreen" component={ResultScreen} />
+        <Stack.Screen name="AnswerReview" component={AnswerReview} />
+        <Stack.Screen name="StudentPerformance" component={StudentPerformance} />
         <Stack.Screen name="Notifications" component={Notifications} />
         <Stack.Screen name="Profile" component={Profile} />
         <Stack.Screen name="EditProfile" component={EditProfile} />

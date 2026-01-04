@@ -44,7 +44,7 @@ export default function CreateQuiz({ navigation }) {
                 timeLimit: Number(timeLimit),
                 createdAt: Date.now(),
                 createdBy: user.uid,
-                published: true,
+                isPublished: true,
             };
 
             await axios.put(
