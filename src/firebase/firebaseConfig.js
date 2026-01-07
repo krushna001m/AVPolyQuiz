@@ -4,7 +4,9 @@ import {
     getReactNativePersistence,
 } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { getFirestore } from "firebase/firestore";
+import { getDatabase } from "firebase/database"; // ✅ ADD THIS
 
 const firebaseConfig = {
     apiKey: "AIzaSyB2AQDNf9xlPk-isDJm-033nLf66iv1Uo0",
@@ -17,10 +19,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-/* ✅ CORRECT AUTH FOR REACT NATIVE */
+/* ✅ AUTH */
 export const auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
 });
 
-/* Firestore (unchanged) */
-export const db = getFirestore(app);
+/* ✅ FIRESTORE (for quizzes, questions, etc.) */
+export const firestore = getFirestore(app);
+
+/* ✅ REALTIME DATABASE (FOR RESULTS DASHBOARD) */
+export const rtdb = getDatabase(app);

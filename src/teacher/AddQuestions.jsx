@@ -12,6 +12,7 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { launchImageLibrary } from "react-native-image-picker";
 import RNFS from "react-native-fs";
 import axios from "axios";
+import XLSX from "xlsx";
 import { auth } from "../firebase/firebaseConfig";
 
 const Firebase_Realtime_DB_URL =
@@ -127,6 +128,121 @@ export default function AddQuestions({ route }) {
             Alert.alert("Error", "Failed to upload JSON");
         }
     };
+    /* ================= FILE UPLOAD (JSON / EXCEL) ================= */
+    const handleUploadFile = async () => {
+        try {
+            const res = await launchImageLibrary({ mediaType: "mixed" });
+            if (res.didCancel || !res.assets?.length) return;
+
+            const file = res.assets[0];
+            const uri = file.uri;
+            const name = file.fileName || "";
+
+            if (name.endsWith(".json")) {
+                await handleJSONFile(uri);
+            } else if (name.endsWith(".xlsx")) {
+                await handleExcelFile(uri);
+            } else {
+                Alert.alert("Invalid File", "Upload JSON or Excel (.xlsx) file");
+            }
+        } catch (e) {
+            console.log("FILE UPLOAD ERROR:", e);
+            Alert.alert("Error", "Failed to upload file");
+        }
+    };
+    const handleJSONFile = async (uri) => {
+        const content = await RNFS.readFile(uri, "utf8");
+        const questions = JSON.parse(content);
+
+        if (!Array.isArray(questions)) {
+            Alert.alert("Invalid JSON", "JSON must be an array");
+            return;
+        }
+
+        for (let q of questions) {
+            if (
+                !q.question ||
+                !Array.isArray(q.options) ||
+                q.options.length !== 4 ||
+                typeof q.correctIndex !== "number" ||
+                q.correctIndex < 1 ||
+                q.correctIndex > 4
+            ) {
+                Alert.alert(
+                    "Invalid JSON",
+                    "Each question must have 4 options & correctIndex (1–4)"
+                );
+                return;
+            }
+        }
+
+        for (let q of questions) {
+            await saveQuestionData({
+                question: q.question,
+                options: q.options,
+                correctIndex: q.correctIndex - 1,
+            });
+        }
+
+        Alert.alert("Success", "JSON questions uploaded");
+    };
+    const handleExcelFile = async (uri) => {
+        const bstr = await RNFS.readFile(uri, "base64");
+
+        const workbook = XLSX.read(bstr, { type: "base64" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        const rows = XLSX.utils.sheet_to_json(sheet);
+
+        if (!rows.length) {
+            Alert.alert("Invalid Excel", "Excel file is empty");
+            return;
+        }
+
+        for (let row of rows) {
+            const {
+                question,
+                option1,
+                option2,
+                option3,
+                option4,
+                correctIndex,
+            } = row;
+
+            if (
+                !question ||
+                !option1 ||
+                !option2 ||
+                !option3 ||
+                !option4 ||
+                !correctIndex ||
+                correctIndex < 1 ||
+                correctIndex > 4
+            ) {
+                Alert.alert(
+                    "Invalid Excel Format",
+                    "Columns must be: question, option1–4, correctIndex (1–4)"
+                );
+                return;
+            }
+        }
+
+        for (let row of rows) {
+            await saveQuestionData({
+                question: row.question,
+                options: [
+                    row.option1,
+                    row.option2,
+                    row.option3,
+                    row.option4,
+                ],
+                correctIndex: Number(row.correctIndex) - 1,
+            });
+        }
+
+        Alert.alert("Success", "Excel questions uploaded");
+    };
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 30 }}>
@@ -176,9 +292,9 @@ export default function AddQuestions({ route }) {
             <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Auto Upload MCQs</Text>
 
-                <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadJSON}>
+                <TouchableOpacity style={styles.uploadBtn} onPress={handleUploadFile}>
                     <MaterialIcons name="cloud-upload" size={20} color="#4f46e5" />
-                    <Text style={styles.uploadText}>Upload JSON File</Text>
+                    <Text style={styles.uploadText}>Upload JSON / Excel File</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

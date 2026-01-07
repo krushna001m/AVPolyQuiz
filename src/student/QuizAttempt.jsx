@@ -15,7 +15,7 @@ const Firebase_Realtime_DB_URL =
     "https://avpolyquiz-162f0-default-rtdb.firebaseio.com";
 
 export default function QuizAttempt({ route, navigation }) {
-    const { quizId, quizTitle, timeLimit = 10 } = route.params;
+    const { quizId, quizTitle } = route.params; // ❌ removed timeLimit from params
 
     const [questions, setQuestions] = useState([]);
     const [current, setCurrent] = useState(0);
@@ -27,31 +27,16 @@ export default function QuizAttempt({ route, navigation }) {
     const [locked, setLocked] = useState(false);
 
     /* ================= TIMER ================= */
-    const [timeLeft, setTimeLeft] = useState(timeLimit * 60);
+    const [timeLeft, setTimeLeft] = useState(null); // ⬅ null initially
     const timerRef = useRef(null);
 
-    /* ================= FETCH QUESTIONS ================= */
+    /* ================= FETCH QUIZ + QUESTIONS ================= */
     useEffect(() => {
-        loadQuestions();
-    }, []);
-
-    /* ================= START TIMER ================= */
-    useEffect(() => {
-        timerRef.current = setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev <= 1) {
-                    clearInterval(timerRef.current);
-                    autoSubmit();
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-
+        loadQuizAndQuestions();
         return () => clearInterval(timerRef.current);
     }, []);
 
-    const loadQuestions = async () => {
+    const loadQuizAndQuestions = async () => {
         try {
             const user = auth.currentUser;
             if (!user) {
@@ -61,15 +46,43 @@ export default function QuizAttempt({ route, navigation }) {
 
             const token = await user.getIdToken(true);
 
-            const res = await axios.get(
+            /* ---------- FETCH QUIZ (TIME LIMIT) ---------- */
+            const quizRes = await axios.get(
+                `${Firebase_Realtime_DB_URL}/quizzes/${quizId}.json`,
+                { params: { auth: token } }
+            );
+
+            if (!quizRes.data?.timeLimit) {
+                Alert.alert("Error", "Quiz time limit not found");
+                return;
+            }
+
+            const totalSeconds = quizRes.data.timeLimit * 60;
+            setTimeLeft(totalSeconds);
+
+            /* ---------- START TIMER AFTER TIME SET ---------- */
+            timerRef.current = setInterval(() => {
+                setTimeLeft((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(timerRef.current);
+                        autoSubmit();
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            /* ---------- FETCH QUESTIONS ---------- */
+            const qRes = await axios.get(
                 `${Firebase_Realtime_DB_URL}/questions/${quizId}.json`,
                 { params: { auth: token } }
             );
 
-            setQuestions(res.data ? Object.values(res.data) : []);
+            setQuestions(qRes.data ? Object.values(qRes.data) : []);
+
         } catch (e) {
-            console.log("FETCH QUESTIONS ERROR:", e);
-            Alert.alert("Error", "Failed to load questions");
+            console.log("LOAD QUIZ ERROR:", e);
+            Alert.alert("Error", "Failed to load quiz");
         } finally {
             setLoading(false);
         }
@@ -132,14 +145,15 @@ export default function QuizAttempt({ route, navigation }) {
             const token = await user.getIdToken(true);
 
             await axios.put(
-                `${Firebase_Realtime_DB_URL}/results/${quizId}/${user.uid}.json?auth=${token}`,
+                `${Firebase_Realtime_DB_URL}/results/${quizId}/${user.uid}.json`,
                 {
                     quizId,
                     score: finalScore,
                     total: questions.length,
                     answers: finalAnswers,
                     submittedAt: Date.now(),
-                }
+                },
+                { params: { auth: token } }
             );
 
             navigation.replace("ResultScreen", {
@@ -156,17 +170,18 @@ export default function QuizAttempt({ route, navigation }) {
 
     /* ================= HELPERS ================= */
     const formatTime = () => {
+        if (timeLeft === null) return "--:--";
         const m = Math.floor(timeLeft / 60);
         const s = timeLeft % 60;
         return `${m}:${s < 10 ? "0" : ""}${s}`;
     };
 
     /* ================= LOADING ================= */
-    if (loading) {
+    if (loading || timeLeft === null) {
         return (
             <View style={styles.center}>
                 <ActivityIndicator size="large" color="#4f46e5" />
-                <Text>Loading Questions...</Text>
+                <Text>Loading Quiz...</Text>
             </View>
         );
     }
@@ -234,28 +249,15 @@ export default function QuizAttempt({ route, navigation }) {
 
 /* ================= STYLES ================= */
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: "#f9fafb",
-    },
-    center: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
+    container: { flex: 1, padding: 20, backgroundColor: "#f9fafb" },
+    center: { flex: 1, justifyContent: "center", alignItems: "center" },
     header: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: 12,
     },
-    title: {
-        fontSize: 18,
-        fontWeight: "bold",
-        color: "#111827",
-        flex: 1,
-    },
+    title: { fontSize: 18, fontWeight: "bold", color: "#111827", flex: 1 },
     timerBox: {
         flexDirection: "row",
         alignItems: "center",
@@ -263,22 +265,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         borderRadius: 12,
     },
-    timerText: {
-        marginLeft: 6,
-        fontWeight: "bold",
-    },
-    question: {
-        fontSize: 18,
-        fontWeight: "bold",
-        marginVertical: 20,
-    },
-    option: {
-        padding: 16,
-        borderRadius: 14,
-        marginBottom: 12,
-    },
-    optionText: {
-        fontSize: 16,
-        color: "#111827",
-    },
+    timerText: { marginLeft: 6, fontWeight: "bold" },
+    question: { fontSize: 18, fontWeight: "bold", marginVertical: 20 },
+    option: { padding: 16, borderRadius: 14, marginBottom: 12 },
+    optionText: { fontSize: 16, color: "#111827" },
 });
